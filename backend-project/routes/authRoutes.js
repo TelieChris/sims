@@ -1,63 +1,50 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
+const db = require('../models/db');
 const router = express.Router();
-const bcrypt = require('bcrypt');
-const db = require('../models/db'); // adjust if your path is different
 
-// REGISTER
+// Register User
 router.post('/register', async (req, res) => {
   const { username, password } = req.body;
+  const hash = await bcrypt.hash(password, 10);
 
-  try {
-    const [existing] = await db.promise().query('SELECT * FROM users WHERE username = ?', [username]);
-    if (existing.length > 0) return res.status(400).json({ message: 'User already exists' });
-
-    const hashed = await bcrypt.hash(password, 10);
-    await db.promise().query('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashed]);
-
-    res.status(201).json({ message: 'User registered successfully' });
-  } catch (err) {
-    console.error('Registration error:', err);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-
-// LOGIN
-router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  db.query('SELECT * FROM users WHERE username = ?', [username], async (err, results) => {
-    if (err || results.length === 0) return res.status(401).json({ message: 'Invalid credentials' });
-
-    const match = await bcrypt.compare(password, results[0].password);
-    if (!match) return res.status(401).json({ message: 'Invalid credentials' });
-
-    req.session.user = { id: results[0].id, username: results[0].username };
-    res.json({ message: 'Login successful' });
+  const sql = "INSERT INTO users (username, password) VALUES (?, ?)";
+  db.query(sql, [username, hash], (err) => {
+    if (err) throw err;
+    res.status(201).json({ message: 'User registered' });
   });
 });
 
-// CHECK AUTH
-router.get('/check-auth', (req, res) => {
-  if (req.session.user) {
-    res.json({ user: req.session.user });
-  } else {
-    res.status(401).json({ message: 'Not authenticated' });
-  }
+// Login User
+router.post('/login', (req, res) => {
+  const { username, password } = req.body;
+
+  const sql = "SELECT * FROM users WHERE username = ?";
+  db.query(sql, [username], async (err, results) => {
+    if (err || results.length === 0) return res.status(401).json({ message: 'User not found' });
+
+    const valid = await bcrypt.compare(password, results[0].password);
+    if (!valid) return res.status(401).json({ message: 'Invalid credentials' });
+
+    req.session.user = { id: results[0].id, username };
+    res.json({ message: 'Login successful', user: req.session.user });
+  });
 });
 
-// LOGOUT
-router.post('/logout', (req, res) => {
-  req.session.destroy();
-  res.clearCookie('connect.sid');
-  res.json({ message: 'Logged out' });
+// Logout
+router.get('/logout', (req, res) => {
+  req.session.destroy(err => {
+    if (err) return res.status(500).json({ message: 'Logout failed' });
+    res.json({ message: 'Logged out' });
+  });
 });
 
-// Check current session
+// Check session
 router.get('/session', (req, res) => {
   if (req.session.user) {
-    res.json({ user: req.session.user });
+    res.json({ loggedIn: true, user: req.session.user });
   } else {
-    res.status(401).json({ message: 'Not authenticated' });
+    res.json({ loggedIn: false });
   }
 });
 

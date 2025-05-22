@@ -1,42 +1,42 @@
-const express = require('express');
-const cors = require('cors');
-const app = express();
+const express  = require('express');
+const cors     = require('cors');
+const session  = require('express-session');
 require('dotenv').config();
-const session = require('express-session');
-const bcrypt = require('bcrypt');
 
 const sparePartRoutes = require('./routes/sparePartRoutes');
-const stockInRoutes = require('./routes/stockInRoutes');
-const stockOutRoutes = require('./routes/stockOutRoutes');
-const authRoutes = require('./routes/authRoutes');
+const stockInRoutes   = require('./routes/stockInRoutes');
+const stockOutRoutes  = require('./routes/stockOutRoutes');
+const authRoutes      = require('./routes/authRoutes');
 
-app.use(cors());
+const app = express();
+
+/* ---------- 1. CORS (only once, FIRST) ---------- */
+app.use(cors({
+  origin: 'http://localhost:3000',   // ⬅️ exact front-end origin
+  credentials: true                  // ⬅️ allow cookies / sessions
+}));
+
+/* ---------- 2. Body parser ---------- */
 app.use(express.json());
 
-app.use('/api/spareparts', sparePartRoutes);
-app.use('/api/stockin', stockInRoutes);
-app.use('/api/stockout', stockOutRoutes);
-app.use('/api/auth', authRoutes);
-
-// Use session before your routes
+/* ---------- 3. Session middleware BEFORE routes ---------- */
 app.use(session({
-  secret: 'your_secret_key',
+  secret: 'supersecretkey',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to true if using HTTPS
     httpOnly: true,
-    maxAge: 1000 * 60 * 60, // 1 hour
+    secure: false,                   // true only behind HTTPS
+    maxAge: 1000 * 60 * 60 * 24      // 1 day
   }
 }));
 
-// Setup CORS with credentials
-app.use(cors({
-  origin: 'http://localhost:3000',
-  credentials: true
-}));
+/* ---------- 4. Routes ---------- */
+app.use('/api/spareparts', sparePartRoutes);
+app.use('/api/stockin',   stockInRoutes);
+app.use('/api/stockout',  stockOutRoutes);
+app.use('/api/auth',      authRoutes);
 
+/* ---------- 5. Start server ---------- */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

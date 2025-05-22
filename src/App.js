@@ -9,13 +9,16 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import LoginPage from './pages/LoginPage';
 import { ToastContainer } from 'react-toastify';
-import { AuthContext } from './context/AuthContext';
+import Register from './pages/Register';
 import HomePage from './pages/HomePage';
+import ProtectedRoute from './pages/ProtectedRoute';
+import axios from 'axios';
+axios.defaults.withCredentials = true;
+axios.defaults.baseURL = 'http://localhost:5000';
 
 function App() {
-  const isAuthenticated = localStorage.getItem('isLoggedIn');
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated }}>
     <Router>
       <div className="flex">
         <Sidebar />
@@ -28,13 +31,13 @@ function App() {
             <Route path="/stockout" element={<StockOutPage />} />
             <Route path="/report" element={<ReportPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/logout" element={<LogoutPage />} />
           </Routes>
           <ToastContainer position="top-right" />
         </div>
       </div>
     </Router>
-    </AuthContext.Provider>
   );
 }
 
